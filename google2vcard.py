@@ -91,13 +91,21 @@ def add_simple(card, row, column, tag):
     if column in row:
         value = row[column]
         if value:
-           card.add(tag).value = value
+            card.add(tag).value = value
+
+def add_multi(card, row, column, tag):
+    if column in row:
+        multi_values = row[column]
+        if multi_values:
+            # not sure if we should also de_star()...
+            card.add(tag).value = de_multi(multi_values)
 
 def create_card(name, emails, phones, websites, row):
     card = create_from_name(name)
     add_attribute_type(card, phones, 'tel')
     add_attribute_type(card, emails, 'email')
     add_attribute_type(card, websites, 'url')
+    add_multi(card, row, 'Group Membership', 'categories')
     add_simple(card, row, 'Birthday', 'bday')
     add_simple(card, row, 'Notes', 'note')
 
