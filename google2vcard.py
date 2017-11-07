@@ -7,6 +7,9 @@ import vobject
 from collections import defaultdict
 
 
+def de_multi(value):
+    return value.split(' ::: ')
+
 def de_star(value):
     is_starred = value.startswith('* ')
     return (value[2:] if is_starred else value, is_starred)
@@ -25,17 +28,20 @@ class SimpleMultiEntry(object):
             if value_key not in row:
                 break # no more entries
 
-            entry_value = row[value_key]
+            combined_values = row[value_key]
 
-            if entry_value != '':
+            if combined_values:
                 type_key = prefix + 'Type'
-                (entry_type, is_starred) = de_star(row[type_key]) if type_key in row else (None, false)
-                new_entry = (entry_value, type_mapper.map(entry_type))
+                (original_type, is_starred) = de_star(row[type_key]) if type_key in row else (None, false)
+                entry_type = type_mapper.map(original_type)
 
-                if is_starred:
-                    self.__entry.append(new_entry)
-                else:
-                    self.__entry.insert(0, new_entry)
+                for entry_value in reversed(de_multi(combined_values)):
+                    new_entry = (entry_value, entry_type)
+
+                    if is_starred:
+                        self.__entry.append(new_entry)
+                    else:
+                        self.__entry.insert(0, new_entry)
 
     def primary(self):
         return self.__entry[0] if self.__entry else (None,None)
