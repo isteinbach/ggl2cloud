@@ -58,6 +58,36 @@ class SimpleMultiEntry(object):
         return self.__entry
 
 
+class AddressEntry(object):
+    def __init__(self, row, prefix, type_mapper):
+        self.type_param = type_mapper.map(remove_key(row, prefix + 'Type'))
+        self.box = remove_key(row, prefix + 'PO Box')
+        self.extended = remove_key(row, prefix + 'Extended Address')
+        self.street = remove_key(row, prefix + 'Street')
+        self.city = remove_key(row, prefix + 'City')
+        self.region = remove_key(row, prefix + 'Region')
+        self.code = remove_key(row, prefix + 'Postal Code')
+        self.country = remove_key(row, prefix + 'Country')
+        self.has_address = self.box or self.extended or self.street or self.city or self.region or self.code or self.country
+        self.formatted = remove_key(row, prefix + 'Formatted')
+
+class AddressMultiEntry(object):
+    def __init__(self, row, type_mapper):
+        self.__entry = []
+
+        for num in itertools.count(1):
+            prefix = 'Address ' + str(num) + ' - '
+
+            if not any(key.startswith(prefix) for key in row):
+                break # no more entries
+
+            new_entry = AddressEntry(row, prefix, type_mapper)
+            self.__entry.append(new_entry)
+
+    def entries(self):
+        return self.__entry
+
+
 class Name(object):
     def __init__(self, row, emails, phones):
         self.fn = remove_key(row, 'Name')
@@ -108,10 +138,29 @@ def add_multi(card, row, column, tag):
             # not sure if we should also de_star()...
             card.add(tag).value = de_multi(multi_values)
 
-def create_card(name, emails, phones, websites, row):
+def add_addresses(card, addresses):
+    for entry in addresses.entries():
+        if entry.has_address:
+            a = card.add('adr')
+            a.type_param = entry.type_param
+            a.value.box = entry.box
+            a.value.extended = entry.extended
+            a.value.street = entry.street
+            a.value.city = entry.city
+            a.value.region = entry.region
+            a.value.code = entry.code
+            a.value.country = entry.country
+        if entry.formatted:
+            a = card.add('label')
+            a.type_param = entry.type_param
+            a.value = entry.formatted
+
+
+def create_card(name, emails, phones, addresses, websites, row):
     card = create_from_name(name)
     add_attribute_type(card, phones, 'tel')
     add_attribute_type(card, emails, 'email')
+    add_addresses(card, addresses)
     add_attribute_type(card, websites, 'url')
     add_multi(card, row, 'Group Membership', 'categories')
     add_simple(card, row, 'Birthday', 'bday')
@@ -167,6 +216,13 @@ def convert(filename):
             'Work': ['WORK','VOICE']
         })
 
+        addresses_mapper = Mapper('address types', {
+            'Büro': 'WORK',
+            'Home': 'HOME',
+            'Persönlich': 'HOME',
+            'Work': 'WORK'
+        })
+
         websites_mapper = Mapper('website types', {
             'Büro': 'WORK',
             'Home': 'HOME',
@@ -178,9 +234,10 @@ def convert(filename):
             emails = SimpleMultiEntry(row, 'E-mail', emails_mapper)
             phones = SimpleMultiEntry(row, 'Phone', phones_mapper)
             name = Name(row, emails, phones)
+            addresses = AddressMultiEntry(row, addresses_mapper)
             websites = SimpleMultiEntry(row, 'Website', websites_mapper)
 
-            card = create_card(name, emails, phones, websites, row)
+            card = create_card(name, emails, phones, addresses, websites, row)
             content += card.serialize()
             for k in row:
                 if row[k]:
@@ -189,6 +246,7 @@ def convert(filename):
         print(content, end='')
         emails_mapper.print_unknown()
         phones_mapper.print_unknown()
+        addresses_mapper.print_unknown()
         websites_mapper.print_unknown()
         print('Unhandled attributes:', unhandled, file=sys.stderr)
 
