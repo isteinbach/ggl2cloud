@@ -15,6 +15,14 @@ def de_star(value):
     return (value[2:] if is_starred else value, is_starred)
 
 
+def remove_key(container, key):
+    is_present = key in container
+    value = None
+    if is_present:
+        value = container[key]
+        del container[key]
+    return value
+
 
 class SimpleMultiEntry(object):
     def __init__(self, row, attribute, type_mapper):
@@ -25,14 +33,14 @@ class SimpleMultiEntry(object):
             prefix = attribute + ' ' + str(num) + ' - '
             value_key = prefix + 'Value'
 
-            if value_key not in row:
+            combined_values = remove_key(row, value_key)
+            if combined_values is None:
                 break # no more entries
-
-            combined_values = row[value_key]
 
             if combined_values:
                 type_key = prefix + 'Type'
-                (original_type, is_starred) = de_star(row[type_key]) if type_key in row else (None, false)
+                type_value = remove_key(row, type_key)
+                (original_type, is_starred) = de_star(type_value) if type_value is not None else (None, false)
                 entry_type = type_mapper.map(original_type)
 
                 for entry_value in reversed(de_multi(combined_values)):
@@ -52,13 +60,13 @@ class SimpleMultiEntry(object):
 
 class Name(object):
     def __init__(self, row, emails, phones):
-        self.fn = row['Name']
-        self.name = row['Name']
-        self.prefix = row['Name Prefix']
-        self.given = row['Given Name']
-        self.additional = row['Additional Name']
-        self.family = row['Family Name']
-        self.suffix = row['Name Suffix']
+        self.fn = remove_key(row, 'Name')
+        self.name = self.fn
+        self.prefix = remove_key(row, 'Name Prefix')
+        self.given = remove_key(row, 'Given Name')
+        self.additional = remove_key(row, 'Additional Name')
+        self.family = remove_key(row, 'Family Name')
+        self.suffix = remove_key(row, 'Name Suffix')
 
         if self.fn == '':
             self.fn = ' '.join(filter(None, [self.prefix, self.given, self.additional, self.family, self.suffix]))
@@ -89,13 +97,13 @@ def add_attribute_type(card, collection, attribute):
 
 def add_simple(card, row, column, tag):
     if column in row:
-        value = row[column]
+        value = remove_key(row, column)
         if value:
             card.add(tag).value = value
 
 def add_multi(card, row, column, tag):
     if column in row:
-        multi_values = row[column]
+        multi_values = remove_key(row, column)
         if multi_values:
             # not sure if we should also de_star()...
             card.add(tag).value = de_multi(multi_values)
@@ -135,6 +143,7 @@ def convert(filename):
     with open(filename, 'r', encoding='utf16') as source:
         reader = csv.DictReader(source, delimiter=',', quotechar='"', doublequote=True)
         content = ''
+        unhandled = set()
 #defaultdict(<class 'int'>, {'': 126, 'Other': 68, 'Büro': 1, 'Home': 239, 'Benutzerdefiniert': 3, 'alias': 33, 'Work': 60, 'alt': 1})
         emails_mapper = Mapper('email types', {
             'Büro': 'WORK',
@@ -173,11 +182,15 @@ def convert(filename):
 
             card = create_card(name, emails, phones, websites, row)
             content += card.serialize()
+            for k in row:
+                if row[k]:
+                    unhandled.add(k)
 
         print(content, end='')
         emails_mapper.print_unknown()
         phones_mapper.print_unknown()
         websites_mapper.print_unknown()
+        print('Unhandled attributes:', unhandled, file=sys.stderr)
 
 
 if __name__ == '__main__':
