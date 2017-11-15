@@ -164,6 +164,7 @@ def create_card(name, emails, phones, addresses, websites, row):
     add_attribute_type(card, websites, 'url')
     add_multi(card, row, 'Group Membership', 'categories')
     add_simple(card, row, 'Birthday', 'bday')
+    add_simple(card, row, 'Nickname', 'nickname')
     add_simple(card, row, 'Notes', 'note')
 
     return card
