@@ -161,6 +161,7 @@ def create_card(name, emails, phones, addresses, websites, row):
     add_attribute_type(card, phones, 'tel')
     add_attribute_type(card, emails, 'email')
     add_addresses(card, addresses)
+    add_multi(card, row, 'Organization 1 - Name', 'org') # this is a hack; we should use some smart parsing here...
     add_attribute_type(card, websites, 'url')
     add_multi(card, row, 'Group Membership', 'categories')
     add_simple(card, row, 'Birthday', 'bday')
