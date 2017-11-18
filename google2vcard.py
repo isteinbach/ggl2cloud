@@ -27,7 +27,8 @@ def remove_key(container, key):
 class SimpleMultiEntry(object):
     def __init__(self, row, attribute, type_mapper):
         self.__attribute = attribute
-        self.__entry = []
+        starred = []
+        non_starred = []
 
         for num in itertools.count(1):
             prefix = attribute + ' ' + str(num) + ' - '
@@ -43,13 +44,14 @@ class SimpleMultiEntry(object):
                 (original_type, is_starred) = de_star(type_value) if type_value is not None else (None, false)
                 entry_type = type_mapper.map(original_type)
 
-                for entry_value in reversed(de_multi(combined_values)):
+                for entry_value in de_multi(combined_values):
                     new_entry = (entry_value, entry_type)
 
                     if is_starred:
-                        self.__entry.append(new_entry)
+                        starred.append(new_entry)
                     else:
-                        self.__entry.insert(0, new_entry)
+                        non_starred.append(new_entry)
+        self.__entry = starred + non_starred
 
     def primary(self):
         return self.__entry[0] if self.__entry else (None,None)
@@ -142,7 +144,8 @@ def add_addresses(card, addresses):
     for entry in addresses.entries():
         if entry.has_address:
             a = card.add('adr')
-            a.type_param = entry.type_param
+            if entry.type_param:
+                a.type_param = entry.type_param
             a.value.box = entry.box
             a.value.extended = entry.extended
             a.value.street = entry.street
@@ -152,7 +155,8 @@ def add_addresses(card, addresses):
             a.value.country = entry.country
         if entry.formatted:
             a = card.add('label')
-            a.type_param = entry.type_param
+            if entry.type_param:
+                a.type_param = entry.type_param
             a.value = entry.formatted
 
 
